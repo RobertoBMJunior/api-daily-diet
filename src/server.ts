@@ -5,11 +5,13 @@ import { z } from "zod";
 const app = fastify()
 
 //USERS
+//Listar todos os usuários
 app.get('/users', async (request,reply) => {
     const user = await knex('users').select('*')
     return user
 })
 
+//Criar um novo usuário
 app.post('/users', async (request,reply) => {
     const getParamsSchema = z.object({
         email: z.string(),
@@ -41,19 +43,6 @@ app.post('/meals', async (request,reply) => {
     return reply.status(201).send('Dados Enviados!')
 })
 
-//Listar as refeições por usuário.
-app.get('/meals/:user_email', async (request, reply) => {
-    const getParamsSchema = z.object({
-        user_email: z.string(),
-      })
-
-    const { user_email } = getParamsSchema.parse(request.params)
-    
-    const allMeals = await knex('meals').where({user_email,}).select('*')
-
-    return allMeals
-})
-
 //Editar uma refeição
 app.put('/meals/:user_email/:name_Meal', async (request,reply) => {
     const getParamsSchema = z.object({
@@ -80,6 +69,7 @@ app.put('/meals/:user_email/:name_Meal', async (request,reply) => {
     return reply.status(201).send("Alterações Concluídas")
 })
 
+
 //Deletar uma refeição
 app.delete('/meals/:user_email/:name_Meal', async (request,reply) => {
     const getParamsSchema = z.object({
@@ -98,6 +88,19 @@ app.delete('/meals/:user_email/:name_Meal', async (request,reply) => {
     return reply.status(201).send("Refeição deletada")
 })
 
+//Listar todas as refeições por usuário.
+app.get('/meals/:user_email', async (request, reply) => {
+    const getParamsSchema = z.object({
+        user_email: z.string(),
+      })
+
+    const { user_email } = getParamsSchema.parse(request.params)
+    
+    const allMeals = await knex('meals').where({user_email,}).select('*')
+
+    return allMeals
+})
+
 //Visualizar uma única refeição
 app.get('/meals/:user_email/:name_Meal', async (request,reply) => {
     const getParamsSchema = z.object({
@@ -114,6 +117,42 @@ app.get('/meals/:user_email/:name_Meal', async (request,reply) => {
     }).first()
 
     return meal
+})
+
+//Visualizar a quantidade total de refeições registradas, a quantidade total de refeições 
+//dentro e fora da dieta e a melhor sequência de refeições dentro da dieta POR usuario. 
+app.get('/meals/statistics/:user_email', async (request,reply) => {
+    const getParamsSchema = z.object({
+        user_email: z.string(),
+      })
+
+    const { user_email} = getParamsSchema.parse(request.params)
+
+    const totalCount: any = await knex('meals').where({
+        user_email,
+    }).select('*').count('id').first()
+
+    const countIn: any = await knex('meals').where({
+        user_email,
+        OnADiet: "Yes",
+    }).select('*').count('id').first()
+
+    const betterSequence: any = await knex('meals').where({
+        user_email,
+        OnADiet: "Yes",
+    }).select('*').limit(3)
+
+
+    const totalMeals = totalCount['count(`id`)']
+    const totalIn = countIn['count(`id`)']
+    const totalOut = totalMeals - totalIn
+    
+    return {
+        totalMeals,
+        totalIn,
+        totalOut,
+        betterSequence,
+    }
 })
 
 
